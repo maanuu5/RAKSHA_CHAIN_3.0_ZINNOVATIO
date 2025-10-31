@@ -6,6 +6,9 @@ export default function CheckpointPage({ officerName, checkpointLoc }: { officer
   const [scanning, setScanning] = useState(false);
   const [scannedData, setScannedData] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [detectedUrl, setDetectedUrl] = useState<string | null>(null);
+  const [autoOpenUrl, setAutoOpenUrl] = useState(false);
+  const [lastScanDebug, setLastScanDebug] = useState<string | null>(null);
 
   const buttonStyle: React.CSSProperties = {
     fontFamily: 'doto, sans-serif',
@@ -195,24 +198,61 @@ export default function CheckpointPage({ officerName, checkpointLoc }: { officer
             )}
             {scanning && (
               <div>
-                <div style={{ position: 'relative', maxWidth: '480px', margin: '0 auto', borderRadius: '16px', overflow: 'hidden', backgroundColor: '#000' }}>
+                <div style={{ position: 'relative', maxWidth: '720px', width: '100%', margin: '0 auto', borderRadius: '16px', overflow: 'hidden', backgroundColor: '#000' }}>
+                  {/* Larger/responsive scanner and safer handling of detected URLs (don't auto-redirect by default) */}
                   <BarcodeScannerComponent
-                    width={480}
-                    height={320}
+                    width={640}
+                    height={480}
                     onUpdate={(err, result) => {
-                      let qrText = null;
+                      let qrText: string | null = null;
                       if (result && typeof result === 'object' && 'getText' in result && typeof result.getText === 'function') {
-                        qrText = result.getText();
+                        try {
+                          qrText = result.getText();
+                        } catch (e) {
+                          qrText = null;
+                        }
                       }
+
+                      // Save a small debug trace for laptop troubleshooting
+                      if (qrText) setLastScanDebug(`Detected text: ${qrText}`);
+                      else if (err && typeof err === 'object' && err !== null && 'message' in err) setLastScanDebug(`Error: ${(err as { message?: unknown }).message}`);
+
                       if (qrText) {
                         setScannedData(qrText);
+                        setError(null);
                         const to = isProbablyUrlOrDomain(qrText);
-                        if (to) window.location.href = to;
+                        if (to) {
+                          setDetectedUrl(to);
+                          if (autoOpenUrl) {
+                            // Only auto-navigate when user enabled the option
+                            window.location.href = to;
+                          }
+                        }
                       }
-                      if (err) setError(typeof err === 'object' && err !== null && 'message' in err ? String((err as { message?: unknown }).message) : String(err));
+
+                      if (err) {
+                        setError(typeof err === 'object' && err !== null && 'message' in err ? String((err as { message?: unknown }).message) : String(err));
+                      }
                     }}
                   />
+
+                  {/* Small debug / control area to help laptop users */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'rgba(0,0,0,0.5)' }}>
+                    <label style={{ fontFamily: 'Source Code Pro, monospace', fontSize: 12, color: 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <input type="checkbox" checked={autoOpenUrl} onChange={(e) => setAutoOpenUrl(e.target.checked)} />
+                      Auto-open detected URL
+                    </label>
+                    <div style={{ fontFamily: 'Source Code Pro, monospace', fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>{lastScanDebug || 'Waiting for scan...'}</div>
+                  </div>
                 </div>
+
+                {/* If a URL was detected, show it and let user open it (helps debugging on laptop cameras) */}
+                {detectedUrl && (
+                  <div style={{ marginTop: 12, display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center' }}>
+                    <a href={detectedUrl} target="_blank" rel="noreferrer" style={{ ...buttonStyle, textDecoration: 'none' }}>Open Detected URL</a>
+                    <button onClick={() => { navigator.clipboard?.writeText(detectedUrl); alert('URL copied to clipboard'); }} style={{ ...buttonStyle, padding: '10px 14px' }}>Copy URL</button>
+                  </div>
+                )}
                 <button onClick={()=>setScanning(false)} style={{ ...buttonStyle, margin:'18px auto 0', backgroundColor: 'rgba(255, 0, 0, 0.3)', border: '2px solid rgba(255, 0, 0, 0.5)', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                   <X size={18} /> Cancel
                 </button>
