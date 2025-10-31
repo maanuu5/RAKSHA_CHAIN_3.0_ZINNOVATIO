@@ -4,7 +4,8 @@ const path = require('path');
 const cors = require('cors');
 
 const app = express();
-const PORT = 5000;
+// Allow overriding the port via environment variable to avoid EADDRINUSE on hardcoded ports
+const PORT = process.env.PORT || 5000;
 const SHIPMENTS_FILE = path.join(__dirname, 'shipments.json');
 const ORS_API_KEY = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjA0M2Y2MGI1MGVhYzQxZjNiNWNiZDNjMDllYWQ4YWM1IiwiaCI6Im11cm11cjY0In0=';
 
