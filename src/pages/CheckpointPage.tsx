@@ -59,7 +59,7 @@ export default function CheckpointPage({ officerName, checkpointLoc }: { officer
         return
       }
 
-      const API_URL = 'http://localhost:5000/api'
+      const API_URL = window.location.hostname === 'localhost' ? 'http://localhost:5000/api' : '/api'
       const timestamp = new Date().toISOString()
 
       try {
@@ -128,7 +128,7 @@ export default function CheckpointPage({ officerName, checkpointLoc }: { officer
       let parsed: any = null
       try { parsed = JSON.parse(scannedData) } catch (e) { parsed = null }
       const shipmentId = parsed && parsed.id ? parsed.id : null
-      const API_URL = 'http://localhost:5000/api'
+      const API_URL = window.location.hostname === 'localhost' ? 'http://localhost:5000/api' : '/api'
       const timestamp = new Date().toISOString()
 
       try {
@@ -203,6 +203,17 @@ export default function CheckpointPage({ officerName, checkpointLoc }: { officer
                   <BarcodeScannerComponent
                     width={640}
                     height={480}
+                    facingMode="environment"
+                    onError={(err: Error | string) => {
+                      console.error("Camera Error:", err);
+                      const errorMessage = typeof err === 'string' ? err :
+                        !window.isSecureContext ? "Camera access requires HTTPS. Please use a secure connection." :
+                        err.name === "NotAllowedError" ? "Camera access denied. Please allow camera access and reload." :
+                        err.name === "NotFoundError" ? "No camera found. Please ensure your device has a camera." :
+                        `Camera Error: ${err.message || "Unknown error"}`;
+                      setError(errorMessage);
+                      setLastScanDebug(`Error: ${errorMessage}`);
+                    }}
                     onUpdate={(err, result) => {
                       let qrText: string | null = null;
                       if (result && typeof result === 'object' && 'getText' in result && typeof result.getText === 'function') {
